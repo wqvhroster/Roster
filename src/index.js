@@ -76,32 +76,46 @@ function createData() {
         } else {
             var staffListRange = currentWorksheet.getUsedRangeOrNullObject();
             staffListRange.load("values");
-    
+
             return context.sync()
                 .then(function () {
-                console.log(JSON.stringify(staffListRange.values, null, 4));
-                console.log(staffListRange.values.length);
-                var rosterTableHeaderRow = [];
+                    console.log(JSON.stringify(staffListRange.values, null, 4));
+                    console.log(staffListRange.values.length);
+                    var rosterTableHeaderRow = [];
 
-                for (var i = 0; i < staffListRange.values.length; i++) {
+                    // Start at line 1 to ignore the header row
+                    for (var i = 1; i < staffListRange.values.length; i++) {
 
-                    for (var j = 0; j < staffListRange.values[i].length; j++) {
-                        console.log('Next value is: ' + JSON.stringify(staffListRange.values[i][j], null, 4));
+                        for (var j = 0; j < staffListRange.values[i].length; j++) {
+                            console.log('Next value is: ' + JSON.stringify(staffListRange.values[i][j], null, 4));
 
-                        if (staffListRange.values[i][j] != '') {
-                            rosterTableHeaderRow.push(staffListRange.values[i][j]);
-                            //rosterTable.getHeaderRowRange().values[i] = rosterTableHeaderRow;
+                            if (staffListRange.values[i][j] != '') {
+                                rosterTableHeaderRow.push(staffListRange.values[i][j]);
+                                //rosterTable.getHeaderRowRange().values[i] = rosterTableHeaderRow;
+                            }
                         }
                     }
-                }
 
-                //for var (i = 0; i < )
-                rosterTableHeaderRow.shift(); // Remove the header value (i.e. 'Staff List')
-                rosterTableHeaderRow.unshift('', '');// Two columns for the day of the week and the date
-                console.log(rosterTableHeaderRow);
+                    var calendar = generateCalendar(rosterTableHeaderRow.length);
+                    rosterTableHeaderRow.unshift('', '');// Two columns for the day of the week and the date
+                    console.log(rosterTableHeaderRow);
 
-                
-                            });        
+                    calendar.unshift(rosterTableHeaderRow);
+                    console.log(calendar);
+
+                    var lastCell = convertToNumberingScheme(rosterTableHeaderRow.length);
+                    lastCell += calendar.length;
+                    console.log("the last cell for the roster range is: " + lastCell);
+
+                    context.workbook.worksheets.add("Roster").activate();
+                    var rosterRange = context.workbook.worksheets.getActiveWorksheet().getRange("A1:" + lastCell);
+                    rosterRange.values = calendar;
+                    rosterRange.format.autofitColumns();
+                    formatRoster(context, rosterRange);
+
+                    return context.sync();
+
+                });        
         
         
 
@@ -114,7 +128,53 @@ function createData() {
             }
         });
 }
-    
+
+function formatRoster(context, rosterRange) {
+    rosterRange.load("values");
+    return context.sync().then(function() {
+        console.log("range values size is: " + rosterRange.values.length);
+        for (var i = 0; i < rosterRange.values.length; i++) {
+            // Find the weekends and set the fill to grey
+            var row = rosterRange.values[i];
+            //console.log ("Current row is: " + JSON.stringify(row, null, 4));
+            //console.log ("First column in the current row is: " + row[0]);
+            if (row[0] === "S") {
+                var rangeString = "A" + (i+1) + ":" + convertToNumberingScheme(row.length) + (i+1);
+                //console.log(rangeString);
+                var weekendRange = context.workbook.worksheets.getActiveWorksheet().getRange(rangeString);
+                weekendRange.format.fill.color = "#C8C8C8";
+            }
+
+        }
+        return context.sync();
+
+    });
+
+}
+
+function generateCalendar(numColumns) {
+    console.log(monthSelect.value + ' ' + yearSelect.value);
+    var daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
+    var startDate = new Date(yearSelect.value, monthSelect.selectedIndex, 1);
+    var endDate = new Date(yearSelect.value, monthSelect.selectedIndex + 1, 0);
+    var endDay = endDate.getDate();
+    console.log ("Start date is: " + startDate.toDateString() + "; end date is: " + endDate.toDateString());
+    var calendar = [];
+    for (var i = 1; i < endDay + 1; i++) {
+        var row = [];
+        var currentDate = new Date(yearSelect.value, monthSelect.selectedIndex, i);
+        row.push(daysOfWeek[currentDate.getDay()]);
+        row.push(currentDate.getDate());
+
+        for (var j = 0; j < numColumns; j++) {
+            row.push(""); //Everyone starts off working every day
+        }
+        calendar[i-1] = row;
+    }
+    //console.log(calendar);
+    return calendar;
+}
+
 function createRoster(rosterTableHeaderRow) {
     Excel.run(function (context) {
         var rosterTable = currentWorksheet.tables.add("A2:AZ2", true /*hasHeaders*/);
@@ -150,3 +210,16 @@ function createRoster(rosterTableHeaderRow) {
         }
     });
 }
+
+function convertToNumberingScheme(number) {
+    var baseChar = ("A").charCodeAt(0),
+        letters  = "";
+  
+    do {
+      number -= 1;
+      letters = String.fromCharCode(baseChar + (number % 26)) + letters;
+      number = (number / 26) >> 0; // quick `floor`
+    } while(number > 0);
+  
+    return letters;
+  }
