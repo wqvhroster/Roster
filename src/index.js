@@ -1,5 +1,8 @@
 'use strict';
 
+var unavailableStaff = [[],[],[],[],[],[],[]];
+var datesByDaysOfTheWeek = [[], [], [], [],[],[],[]];
+
 (function () {
     Office.onReady(function () {
         // Office is ready
@@ -86,14 +89,17 @@ function createData() {
                     // Start at line 1 to ignore the header row
                     for (var i = 1; i < staffListRange.values.length; i++) {
 
-                        for (var j = 0; j < staffListRange.values[i].length; j++) {
-                            console.log('Next value is: ' + JSON.stringify(staffListRange.values[i][j], null, 4));
-
-                            if (staffListRange.values[i][j] != '') {
-                                rosterTableHeaderRow.push(staffListRange.values[i][j]);
+                            if (staffListRange.values[i][0] != '') {
+                                rosterTableHeaderRow.push(staffListRange.values[i][0]);
                                 //rosterTable.getHeaderRowRange().values[i] = rosterTableHeaderRow;
                             }
-                        }
+
+                            for (var j = 1; j < staffListRange.values[i].length; j++) {
+                                if (staffListRange.values[i][j] != "") {
+                                    unavailableStaff[j-1].push(i-1);
+                                }
+                            }
+                        
                     }
 
                     var calendar = generateCalendar(rosterTableHeaderRow.length);
@@ -138,13 +144,28 @@ function formatRoster(context, rosterRange) {
             var row = rosterRange.values[i];
             //console.log ("Current row is: " + JSON.stringify(row, null, 4));
             //console.log ("First column in the current row is: " + row[0]);
-            if (row[0] === "S") {
+            if (row[0] === "Sat" || row[0] === "Sun") {
                 var rangeString = "A" + (i+1) + ":" + convertToNumberingScheme(row.length) + (i+1);
                 //console.log(rangeString);
                 var weekendRange = context.workbook.worksheets.getActiveWorksheet().getRange(rangeString);
                 weekendRange.format.fill.color = "#C8C8C8";
             }
 
+        }
+        for (var i = 0; i < datesByDaysOfTheWeek.length; i++) {
+            var staff = unavailableStaff[i];
+            var days = datesByDaysOfTheWeek[i];
+            console.log("For dates: " + datesByDaysOfTheWeek[i] + ", these staff are unavailable: " + unavailableStaff[i]);
+            for (var j = 0; j < staff.length; j++) {
+                for (var k = 0; k < days.length; k++) {
+                    var column = staff[j] +3;
+                    var row = days[k] + 1;
+                    console.log("I wish to grey out cell: " + " j: " + column + ", k: " + row);
+                    var rangeString = convertToNumberingScheme(column) + row;
+                    var dayOffRange = context.workbook.worksheets.getActiveWorksheet().getRange(rangeString);
+                    dayOffRange.format.fill.color = "#C8C8C8";
+                }
+            }
         }
         return context.sync();
 
@@ -154,7 +175,7 @@ function formatRoster(context, rosterRange) {
 
 function generateCalendar(numColumns) {
     console.log(monthSelect.value + ' ' + yearSelect.value);
-    var daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
+    var daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     var startDate = new Date(yearSelect.value, monthSelect.selectedIndex, 1);
     var endDate = new Date(yearSelect.value, monthSelect.selectedIndex + 1, 0);
     var endDay = endDate.getDate();
@@ -163,6 +184,7 @@ function generateCalendar(numColumns) {
     for (var i = 1; i < endDay + 1; i++) {
         var row = [];
         var currentDate = new Date(yearSelect.value, monthSelect.selectedIndex, i);
+        datesByDaysOfTheWeek[currentDate.getDay()].push(currentDate.getDate());
         row.push(daysOfWeek[currentDate.getDay()]);
         row.push(currentDate.getDate());
 
@@ -173,42 +195,6 @@ function generateCalendar(numColumns) {
     }
     //console.log(calendar);
     return calendar;
-}
-
-function createRoster(rosterTableHeaderRow) {
-    Excel.run(function (context) {
-        var rosterTable = currentWorksheet.tables.add("A2:AZ2", true /*hasHeaders*/);
-        var rosterTableRange = rosterTable.getHeaderRowRange();
-        rosterTable.getHeaderRowRange().values = rosterTableHeaderRow;
-        console.log(JSON.stringify(rosterTableRange.values, null,4));
-        rosterTable.name = "RosterTable";
-        console.log('Made a roster table');
-        rosterTable.getRange().format.autofitColumns();
-        rosterTable.getRange().format.autofitRows();
-
-        return context.sync();
-// expensesTable.getHeaderRowRange().values =
-        //     [["Date", "Merchant", "Category", "Amount"]];
-
-        // expensesTable.rows.add(null /*add at the end*/, [
-        //     ["1/1/2017", "The Phone Company", "Communications", "120"],
-        //     ["1/2/2017", "Northwind Electric Cars", "Transportation", "142.33"],
-        //     ["1/5/2017", "Best For You Organics Company", "Groceries", "27.9"],
-        //     ["1/10/2017", "Coho Vineyard", "Restaurant", "33"],
-        //     ["1/11/2017", "Bellows College", "Education", "350.1"],
-        //     ["1/15/2017", "Trey Research", "Other", "135"],
-        //     ["1/15/2017", "Best For You Organics Company", "Groceries", "97.88"]
-        // ]);
-        // expensesTable.columns.getItemAt(3).getRange().numberFormat = [['€#,##0.00']];        
-        //return context.sync().then(function() {
-            //console.log(worksheetTables);
-    }        
-    ).catch(function (error) {
-        console.log("Error: " + error);
-        if (error instanceof OfficeExtension.Error) {
-            console.log("Debug info: " + JSON.stringify(error.debugInfo));
-        }
-    });
 }
 
 function convertToNumberingScheme(number) {
