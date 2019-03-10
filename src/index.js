@@ -64,27 +64,66 @@
 
 var button = $('#generate');
 console.log(button);
-$('#generate').click(createTable);
+$('#generate').click(createData);
 
-function createTable() {
+function createData() {
     Excel.run(function (context) {
-        console.log("I'm here");
-        var currentWorksheet = context.workbook.worksheets.getActiveWorksheet();
-        
-        var staffListTable = currentWorksheet.tables.getItem('Table2');
-        if (staffListTable != null) {
-            console.log("Found the staff list table");
-        }
-        
-        var staffListRange = staffListTable.getDataBodyRange();
-        
-        // var currentWorksheet = context.workbook.worksheets.getActiveWorksheet();
-        var rosterTable = currentWorksheet.tables.add("A2:D2", true /*hasHeaders*/);
-        rosterTable.name = "RosterTable";
-        //rosterTable.getRange().
-        // expensesTable.name = "ExpensesTable";
+        var currentWorksheet = context.workbook.worksheets.getItem('Staff Data');
+        var staffListRange = currentWorksheet.getUsedRangeOrNullObject();
+        if (currentWorksheet == null) {
+            //document.getElementById('errorText').innerHTML = "Was looking for a sheet called Staff Data but couldn't find one.";
+        } else {
+        staffListRange.load("values");
+    
+        return context.sync()
+            .then(function () {
+                console.log(JSON.stringify(staffListRange.values, null, 4));
+                console.log(staffListRange.values.length);
+                var rosterTableHeaderRow = [];
 
-        // expensesTable.getHeaderRowRange().values =
+                for (var i = 0; i < staffListRange.values.length; i++) {
+
+                    for (var j = 0; j < staffListRange.values[i].length; j++) {
+                        console.log('Next value is: ' + JSON.stringify(staffListRange.values[i][j], null, 4));
+
+                        if (staffListRange.values[i][j] != '') {
+                            rosterTableHeaderRow.push(staffListRange.values[i][j]);
+                            //rosterTable.getHeaderRowRange().values[i] = rosterTableHeaderRow;
+                        }
+                    }
+                }
+
+                //for var (i = 0; i < )
+                console.log(rosterTableHeaderRow);
+
+                
+                            });        
+        
+        
+
+        }
+    }
+        ).catch(function (error) {
+            console.log("Error: " + error);
+            if (error instanceof OfficeExtension.Error) {
+                console.log("Debug info: " + JSON.stringify(error.debugInfo));
+            }
+        });
+}
+    
+function createRoster(rosterTableHeaderRow) {
+    Excel.run(function (context) {
+        var rosterTable = currentWorksheet.tables.add("A2:AZ2", true /*hasHeaders*/);
+        var rosterTableRange = rosterTable.getHeaderRowRange();
+        rosterTable.getHeaderRowRange().values = rosterTableHeaderRow;
+        console.log(JSON.stringify(rosterTableRange.values, null,4));
+        rosterTable.name = "RosterTable";
+        console.log('Made a roster table');
+        rosterTable.getRange().format.autofitColumns();
+        rosterTable.getRange().format.autofitRows();
+
+        return context.sync();
+// expensesTable.getHeaderRowRange().values =
         //     [["Date", "Merchant", "Category", "Amount"]];
 
         // expensesTable.rows.add(null /*add at the end*/, [
@@ -96,21 +135,14 @@ function createTable() {
         //     ["1/15/2017", "Trey Research", "Other", "135"],
         //     ["1/15/2017", "Best For You Organics Company", "Groceries", "97.88"]
         // ]);
-
-        // expensesTable.columns.getItemAt(3).getRange().numberFormat = [['€#,##0.00']];
-        // expensesTable.getRange().format.autofitColumns();
-        // expensesTable.getRange().format.autofitRows();
-        
-        return context.sync().then(function() {
+        // expensesTable.columns.getItemAt(3).getRange().numberFormat = [['€#,##0.00']];        
+        //return context.sync().then(function() {
             //console.log(worksheetTables);
+    }        
+    ).catch(function (error) {
+        console.log("Error: " + error);
+        if (error instanceof OfficeExtension.Error) {
+            console.log("Debug info: " + JSON.stringify(error.debugInfo));
         }
-
-        );
-    })
-        .catch(function (error) {
-            console.log("Error: " + error);
-            if (error instanceof OfficeExtension.Error) {
-                console.log("Debug info: " + JSON.stringify(error.debugInfo));
-            }
-        });
+    });
 }
