@@ -68,15 +68,17 @@ $('#generate').click(createData);
 
 function createData() {
     Excel.run(function (context) {
-        var currentWorksheet = context.workbook.worksheets.getItem('Staff Data');
-        var staffListRange = currentWorksheet.getUsedRangeOrNullObject();
-        if (currentWorksheet == null) {
-            //document.getElementById('errorText').innerHTML = "Was looking for a sheet called Staff Data but couldn't find one.";
+        var currentWorksheet = context.workbook.worksheets.getItemOrNullObject('Staff Data');
+        console.log("current worksheet is: " + JSON.stringify(currentWorksheet, null, 4));
+        if (currentWorksheet === undefined) {
+            // This doesn't work!
+            document.getElementById('errorText').innerHTML = "Was looking for a sheet called Staff Data but couldn't find one.";
         } else {
-        staffListRange.load("values");
+            var staffListRange = currentWorksheet.getUsedRangeOrNullObject();
+            staffListRange.load("values");
     
-        return context.sync()
-            .then(function () {
+            return context.sync()
+                .then(function () {
                 console.log(JSON.stringify(staffListRange.values, null, 4));
                 console.log(staffListRange.values.length);
                 var rosterTableHeaderRow = [];
@@ -94,6 +96,8 @@ function createData() {
                 }
 
                 //for var (i = 0; i < )
+                rosterTableHeaderRow.shift(); // Remove the header value (i.e. 'Staff List')
+                rosterTableHeaderRow.unshift('', '');// Two columns for the day of the week and the date
                 console.log(rosterTableHeaderRow);
 
                 
