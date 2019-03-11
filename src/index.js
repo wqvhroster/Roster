@@ -72,16 +72,20 @@ $('#generate').click(createData);
 function createData() {
     Excel.run(function (context) {
         var currentWorksheet = context.workbook.worksheets.getItemOrNullObject('Staff Data');
-        console.log("current worksheet is: " + JSON.stringify(currentWorksheet, null, 4));
-        if (currentWorksheet === undefined) {
-            // This doesn't work!
-            document.getElementById('errorText').innerHTML = "Was looking for a sheet called Staff Data but couldn't find one.";
-        } else {
+        
             var staffListRange = currentWorksheet.getUsedRangeOrNullObject();
             staffListRange.load("values");
 
             return context.sync()
                 .then(function () {
+
+                    if (staffListRange.values === undefined) {
+                        document.getElementById('errorText').innerHTML = "Error! Was looking for a sheet called Staff Data but couldn't find one.";
+                        return;
+                    }  else {
+                        document.getElementById('errorText').innerHTML = "Happy days!";
+
+                    }
                     console.log(JSON.stringify(staffListRange.values, null, 4));
                     console.log(staffListRange.values.length);
                     var rosterTableHeaderRow = [];
@@ -111,7 +115,7 @@ function createData() {
 
                     var lastCell = convertToNumberingScheme(rosterTableHeaderRow.length);
                     lastCell += calendar.length;
-                    console.log("the last cell for the roster range is: " + lastCell);
+                    //console.log("the last cell for the roster range is: " + lastCell);
 
                     context.workbook.worksheets.add("Roster").activate();
                     var rosterRange = context.workbook.worksheets.getActiveWorksheet().getRange("A1:" + lastCell);
@@ -125,7 +129,7 @@ function createData() {
         
         
 
-        }
+        
     }
         ).catch(function (error) {
             console.log("Error: " + error);
@@ -138,7 +142,7 @@ function createData() {
 function formatRoster(context, rosterRange) {
     rosterRange.load("values");
     return context.sync().then(function() {
-        console.log("range values size is: " + rosterRange.values.length);
+        //console.log("range values size is: " + rosterRange.values.length);
         for (var i = 0; i < rosterRange.values.length; i++) {
             // Find the weekends and set the fill to grey
             var row = rosterRange.values[i];
@@ -155,12 +159,12 @@ function formatRoster(context, rosterRange) {
         for (var i = 0; i < datesByDaysOfTheWeek.length; i++) {
             var staff = unavailableStaff[i];
             var days = datesByDaysOfTheWeek[i];
-            console.log("For dates: " + datesByDaysOfTheWeek[i] + ", these staff are unavailable: " + unavailableStaff[i]);
+            //console.log("For dates: " + datesByDaysOfTheWeek[i] + ", these staff are unavailable: " + unavailableStaff[i]);
             for (var j = 0; j < staff.length; j++) {
                 for (var k = 0; k < days.length; k++) {
                     var column = staff[j] +3;
                     var row = days[k] + 1;
-                    console.log("I wish to grey out cell: " + " j: " + column + ", k: " + row);
+                    //console.log("I wish to grey out cell: " + " j: " + column + ", k: " + row);
                     var rangeString = convertToNumberingScheme(column) + row;
                     var dayOffRange = context.workbook.worksheets.getActiveWorksheet().getRange(rangeString);
                     dayOffRange.format.fill.color = "#C8C8C8";
