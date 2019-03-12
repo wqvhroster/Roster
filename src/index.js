@@ -1,4 +1,5 @@
 'use strict';
+import moment from 'moment';
 
 var unavailableStaff = [[], [], [], [], [], [], []];
 var datesByDaysOfTheWeek = [[], [], [], [], [], [], []];
@@ -111,20 +112,20 @@ function createData() {
                 calendar.unshift(rosterTableHeaderRow); // Add the header row to the top of the calendar
                 console.log("Here's the calendar: " + calendar);
                 // Figure out what the public holidays are:
-                //var pubHolSheet = context.workbook.worksheets.getItemOrNullObject('Public Holidays');
-                //var pubHolRange = pubHolSheet.getUsedRangeOrNullObject();
-                //populatePublicHolidayData(context, pubHolRange);
+                var pubHolSheet = context.workbook.worksheets.getItemOrNullObject('Public Holidays');
+                var pubHolRange = pubHolSheet.getUsedRangeOrNullObject();
+                populatePublicHolidayData(context, pubHolRange);
 
                 // Create the roster
-                var lastCell = convertToNumberingScheme(rosterTableHeaderRow.length);
-                lastCell += calendar.length;
-                console.log("the last cell for the roster range is: " + lastCell);
-                context.workbook.worksheets.add("Roster");
-                var rosterRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange("A1:" + lastCell);
-                rosterRange.values = calendar;
+//                var lastCell = convertToNumberingScheme(rosterTableHeaderRow.length);
+//                lastCell += calendar.length;
+//                console.log("the last cell for the roster range is: " + lastCell);
+//                context.workbook.worksheets.add("Roster");
+//                var rosterRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange("A1:" + lastCell);
+//                rosterRange.values = calendar;
 
 //                return context.sync().then(function(context) {
-                    formatRoster(context, rosterRange);
+//                    formatRoster(context, rosterRange);
 
 //                });
 
@@ -155,7 +156,7 @@ function formatRoster(context, rosterRange) {
             //console.log ("First column in the current row is: " + row[0]);
             if (row[0] === "Sat" || row[0] === "Sun") {
                 var rangeString = "A" + (i + 1) + ":" + convertToNumberingScheme(row.length) + (i + 1);
-                console.log(rangeString);
+                //console.log(rangeString);
                 var weekendRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange(rangeString);
                 weekendRange.format.fill.color = "#C8C8C8";
             }
@@ -207,13 +208,23 @@ function generateCalendar(numColumns) {
 }
 
 function populatePublicHolidayData(context, pubHolRange) {
+    console.log("Getting public holiday values");
     pubHolRange.load("values");
     return context.sync().then(function() {
         if (pubHolRange.values === undefined) {
             document.getElementById('errorText').innerHTML = "Warning! Was looking for a sheet called Public Holidays but couldn't find one. Public holidays will not be applied! Continuing anyway...";
-        } 
+        } else {
+            console.log("Found public holiday values: " + JSON.stringify(pubHolRange.values, null, 4));
+            console.log("From this moment... " + moment().format());
+
+        }
     
-    })
+    }).catch(function (error) {
+        console.log("Error: " + error);
+        if (error instanceof OfficeExtension.Error) {
+            console.log("Debug info: " + JSON.stringify(error.debugInfo));
+        }
+    });
     
 
 }
