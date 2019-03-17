@@ -27,8 +27,8 @@ var ROSTER_SHEET_NAME = "Roster";
             var mm = today.getMonth(); // January = 0
             var yyyy = today.getFullYear();
             var nextYear = yyyy + 1;
-            console.log('Current year is: ' + yyyy + ' and current month is: ' + mm);
-            console.log('Next year is: ' + nextYear);
+            //console.log('Current year is: ' + yyyy + ' and current month is: ' + mm);
+            //console.log('Next year is: ' + nextYear);
             //Year drop down list
             var yearSelect = document.getElementById("yearSelect");
             var currentYearOption = document.createElement("OPTION");
@@ -49,11 +49,11 @@ var ROSTER_SHEET_NAME = "Roster";
                 monthSelect.add(monthOption);
             }
             var nextMM = (mm + 1) % 12;
-            console.log('nextMM is: ' + nextMM);
+            //console.log('nextMM is: ' + nextMM);
             var nextMonth = monthNames[nextMM];
-            console.log('nextMonth is: ' + nextMonth);
+            //console.log('nextMonth is: ' + nextMonth);
             monthSelect.value = nextMonth;
-            console.log('Selected month is: ' + nextMonth);
+            //console.log('Selected month is: ' + nextMonth);
         });
     });
 
@@ -74,7 +74,7 @@ function createData() {
         return context.sync().then(function() {
 
             for (var i = 0; i<worksheets.items.length; i++) {
-                console.log (worksheets.items[i].name);
+                //console.log (worksheets.items[i].name);
                 if (worksheets.items[i].name === ROSTER_SHEET_NAME) {
                     // Display an error
                     console.log("A sheet named " + ROSTER_SHEET_NAME + " already exists in the workbook. Please rename or delete it and try again.");
@@ -217,12 +217,12 @@ function formatRoster(context, rosterRange) {
 }
 
 function generateCalendar(numColumns) {
-    console.log(monthSelect.value + ' ' + yearSelect.value);
+    //console.log(monthSelect.value + ' ' + yearSelect.value);
     var daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     var startDate = new Date(yearSelect.value, monthSelect.selectedIndex, 1);
     var endDate = new Date(yearSelect.value, monthSelect.selectedIndex + 1, 0);
     var endDay = endDate.getDate();
-    console.log("Start date is: " + startDate.toDateString() + "; end date is: " + endDate.toDateString());
+    //console.log("Start date is: " + startDate.toDateString() + "; end date is: " + endDate.toDateString());
     var calendar = [];
     datesByDaysOfTheWeek = [[], [], [], [], [], [], []]; // reset in case selected month has changed since the last run
     for (var i = 1; i < endDay + 1; i++) {
@@ -241,7 +241,7 @@ function generateCalendar(numColumns) {
 }
 
 function populatePublicHolidayData(context, pubHolRange) {
-    console.log("Getting public holiday values");
+    //console.log("Getting public holiday values");
     pubHolRange.load("values");
     return context.sync().then(function () {
         if (pubHolRange.values === undefined) {
@@ -266,7 +266,7 @@ function populatePublicHolidayData(context, pubHolRange) {
                 }
             }
         }
-        console.log("Public holidays for " + monthSelect.value + " " + yearSelect.value + " are: " + JSON.stringify(pubHols));
+        //console.log("Public holidays for " + monthSelect.value + " " + yearSelect.value + " are: " + JSON.stringify(pubHols));
 
     }).catch(function (error) {
         console.log("Error: " + error);
@@ -283,7 +283,7 @@ function getSelectedDate() {
     var monthSelect = document.getElementById("monthSelect");
     var monthSelect = document.getElementById("monthSelect");
     var yearSelect = document.getElementById("yearSelect");
-    console.log("Selected date is: " + monthSelect.value + " " + yearSelect.value);
+    //console.log("Selected date is: " + monthSelect.value + " " + yearSelect.value);
     var selectedDate = moment();
     selectedDate.month(monthSelect.value);
     selectedDate.year(yearSelect.value);
