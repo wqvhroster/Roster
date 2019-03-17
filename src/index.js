@@ -6,6 +6,11 @@ var datesByDaysOfTheWeek = [[], [], [], [], [], [], []];
 var pubHols = [];
 var PUBHOLDATEFORMAT = "dddd, D MMMM YYYY";
 var NOT_WORKING = "#C8C8C8";
+var ERROR_COLOUR = "#FF0000";
+var HAPPY_COLOUR = "#000000";
+var WARNING_COLOUR = "#FF9900";
+var WHITE_COLOUR = "#FFFFFF";
+var ROSTER_SHEET_NAME = "Roster";
 
 (function () {
     Office.onReady(function () {
@@ -16,7 +21,7 @@ var NOT_WORKING = "#C8C8C8";
         }
         $(document).ready(function () {
             // The document is ready
-            console.log('Document is ready');
+            //console.log('Document is ready');
 
             var today = new Date();
             var mm = today.getMonth(); // January = 0
@@ -49,19 +54,6 @@ var NOT_WORKING = "#C8C8C8";
             console.log('nextMonth is: ' + nextMonth);
             monthSelect.value = nextMonth;
             console.log('Selected month is: ' + nextMonth);
-            /*Excel.run(function (context) {
-                var wb = context.workbook;
-                var functionResult = wb.functions.year(wb.functions.today());
-                functionResult.load('value');
-                return context.sync().then(function () {
-                    console.log('Result of the function: ' + functionResult.value);
-                }).catch(function (error) {
-                    console.log("Error: " + error);
-                    if (error instanceof OfficeExtension.Error) {
-                        console.log("Debug info: " + JSON.stringify(error.debugInfo));
-                    }
-                })
-            });*/
         });
     });
 
@@ -75,6 +67,24 @@ $('#generate').click(createData);
 
 function createData() {
     Excel.run(function (context) {
+
+        // Check that there isn't already a "Roster" worksheet in the book
+        var worksheets = context.workbook.worksheets;
+        worksheets.load("items");
+        return context.sync().then(function() {
+
+            for (var i = 0; i<worksheets.items.length; i++) {
+                console.log (worksheets.items[i].name);
+                if (worksheets.items[i].name === ROSTER_SHEET_NAME) {
+                    // Display an error
+                    console.log("A sheet named " + ROSTER_SHEET_NAME + " already exists in the workbook. Please rename or delete it and try again.");
+                    document.getElementById('errorText').innerHTML = "Error! A sheet named " + ROSTER_SHEET_NAME + " already exists in the workbook. Please rename or delete it and try again.";
+                    document.getElementById('errorText').style.backgroundColor = ERROR_COLOUR;
+                    document.getElementById('errorText').style.color = WHITE_COLOUR;
+                    return;
+                }
+            }
+
         var currentWorksheet = context.workbook.worksheets.getItemOrNullObject('Staff Data');
         var staffListRange = currentWorksheet.getUsedRangeOrNullObject();
         staffListRange.load("values");
@@ -86,10 +96,11 @@ function createData() {
                     return;
                 } else {
                     document.getElementById('errorText').innerHTML = "Happy days!";
-
+                    document.getElementById('errorText').style.backgroundColor = WHITE_COLOUR;
+                    document.getElementById('errorText').style.color = HAPPY_COLOUR;
                 }
-                console.log(JSON.stringify(staffListRange.values, null, 4));
-                console.log(staffListRange.values.length);
+                //console.log(JSON.stringify(staffListRange.values, null, 4));
+                //console.log(staffListRange.values.length);
                 
                 unavailableStaff = [[], [], [], [], [], [], []]; // reset values in case data has been updated since the last run
                 var rosterTableHeaderRow = [];
@@ -111,10 +122,10 @@ function createData() {
 
                 var calendar = generateCalendar(rosterTableHeaderRow.length);
                 rosterTableHeaderRow.unshift('', '');// Two columns for the day of the week and the date
-                console.log(rosterTableHeaderRow);
+                //console.log(rosterTableHeaderRow);
 
                 calendar.unshift(rosterTableHeaderRow); // Add the header row to the top of the calendar
-                console.log("Here's the calendar: " + calendar);
+                //console.log("Here's the calendar: " + calendar);
                 // Figure out what the public holidays are:
                 var pubHolSheet = context.workbook.worksheets.getItemOrNullObject('Public Holidays');
                 var pubHolRange = pubHolSheet.getUsedRangeOrNullObject();
@@ -125,19 +136,18 @@ function createData() {
                     // Create the roster
                     var lastCell = convertToNumberingScheme(rosterTableHeaderRow.length);
                     lastCell += calendar.length;
-                    console.log("the last cell for the roster range is: " + lastCell);
-                    context.workbook.worksheets.add("Roster");
-                    var rosterSheet = context.workbook.worksheets.getItemOrNullObject('Roster');
+                    //console.log("the last cell for the roster range is: " + lastCell);
+                    context.workbook.worksheets.add(ROSTER_SHEET_NAME);
+                    var rosterSheet = context.workbook.worksheets.getItemOrNullObject(ROSTER_SHEET_NAME);
                     var rosterRange = rosterSheet.getRange("A1:" + lastCell);
                     rosterRange.values = calendar;
                     formatRoster(context, rosterRange);
-
+                    rosterSheet.activate();
                 });
-
-                //return context.sync();
 
             });
 
+        });
 
 
 
@@ -165,7 +175,7 @@ function formatRoster(context, rosterRange) {
             if (row[0] === "Sat" || row[0] === "Sun") {
                 var rangeString = "A" + (i + 1) + ":" + convertToNumberingScheme(row.length) + (i + 1);
                 //console.log(rangeString);
-                var weekendRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange(rangeString);
+                var weekendRange = context.workbook.worksheets.getItemOrNullObject(ROSTER_SHEET_NAME).getRange(rangeString);
                 weekendRange.format.fill.color = NOT_WORKING;
             }
 
@@ -175,7 +185,7 @@ function formatRoster(context, rosterRange) {
                     //console.log("Moment.js date() value is: " + pubHols[j].date() + "; are they equal? " + JSON.stringify(row[1] === pubHols[j].date(), null, 4));
                     if (row[1] === pubHols[j].date()) {
                         var rangeString = "A" + (i + 1) + ":" + convertToNumberingScheme(row.length) + (i + 1);
-                        var pubHolRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange(rangeString);
+                        var pubHolRange = context.workbook.worksheets.getItemOrNullObject(ROSTER_SHEET_NAME).getRange(rangeString);
                         pubHolRange.format.fill.color = NOT_WORKING;
 
                     }
@@ -236,6 +246,8 @@ function populatePublicHolidayData(context, pubHolRange) {
     return context.sync().then(function () {
         if (pubHolRange.values === undefined) {
             document.getElementById('errorText').innerHTML = "Warning! Was looking for a sheet called Public Holidays but couldn't find one. Public holidays will not be applied! Continuing anyway...";
+            document.getElementById('errorText').style.backgroundColor = WARNING_COLOUR;
+            document.getElementById('errorText').style.color = WHITE_COLOUR;
         } else {
             pubHols = []; // reset values
             //console.log("Found public holiday values: " + JSON.stringify(pubHolRange.values, null, 4));
