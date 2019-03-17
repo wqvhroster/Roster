@@ -4,6 +4,8 @@ import moment from 'moment';
 var unavailableStaff = [[], [], [], [], [], [], []];
 var datesByDaysOfTheWeek = [[], [], [], [], [], [], []];
 var pubHols = [];
+var PUBHOLDATEFORMAT = "dddd, D MMMM YYYY";
+var NOT_WORKING = "#C8C8C8";
 
 (function () {
     Office.onReady(function () {
@@ -88,6 +90,8 @@ function createData() {
                 }
                 console.log(JSON.stringify(staffListRange.values, null, 4));
                 console.log(staffListRange.values.length);
+                
+                unavailableStaff = [[], [], [], [], [], [], []]; // reset values in case data has been updated since the last run
                 var rosterTableHeaderRow = [];
 
                 // Start at line 1 to ignore the header row
@@ -116,20 +120,21 @@ function createData() {
                 var pubHolRange = pubHolSheet.getUsedRangeOrNullObject();
                 populatePublicHolidayData(context, pubHolRange);
 
-                // Create the roster
-//                var lastCell = convertToNumberingScheme(rosterTableHeaderRow.length);
-//                lastCell += calendar.length;
-//                console.log("the last cell for the roster range is: " + lastCell);
-//                context.workbook.worksheets.add("Roster");
-//                var rosterRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange("A1:" + lastCell);
-//                rosterRange.values = calendar;
 
-//                return context.sync().then(function(context) {
-//                    formatRoster(context, rosterRange);
+                return context.sync().then(function () {
+                    // Create the roster
+                    var lastCell = convertToNumberingScheme(rosterTableHeaderRow.length);
+                    lastCell += calendar.length;
+                    console.log("the last cell for the roster range is: " + lastCell);
+                    context.workbook.worksheets.add("Roster");
+                    var rosterSheet = context.workbook.worksheets.getItemOrNullObject('Roster');
+                    var rosterRange = rosterSheet.getRange("A1:" + lastCell);
+                    rosterRange.values = calendar;
+                    formatRoster(context, rosterRange);
 
-//                });
+                });
 
-                return context.sync();
+                //return context.sync();
 
             });
 
@@ -149,8 +154,11 @@ function formatRoster(context, rosterRange) {
     rosterRange.load("values");
     return context.sync().then(function () {
         //console.log("range values size is: " + rosterRange.values.length);
+        var selectedDate = getSelectedDate(); //based on drop down list values
+        var hasPublicHolidays = (pubHols.length > 0);
+        console.log("There are " + pubHols.length + " public holidays in this month");
+        // Find the weekends and public holidays and set the fill to grey
         for (var i = 0; i < rosterRange.values.length; i++) {
-            // Find the weekends and set the fill to grey
             var row = rosterRange.values[i];
             //console.log ("Current row is: " + JSON.stringify(row, null, 4));
             //console.log ("First column in the current row is: " + row[0]);
@@ -158,10 +166,24 @@ function formatRoster(context, rosterRange) {
                 var rangeString = "A" + (i + 1) + ":" + convertToNumberingScheme(row.length) + (i + 1);
                 //console.log(rangeString);
                 var weekendRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange(rangeString);
-                weekendRange.format.fill.color = "#C8C8C8";
+                weekendRange.format.fill.color = NOT_WORKING;
             }
 
+            if (hasPublicHolidays) {
+                //console.log("Calendar value is: '" + row[1] + "'");
+                for (var j = 0; j < pubHols.length; j++) {
+                    //console.log("Moment.js date() value is: " + pubHols[j].date() + "; are they equal? " + JSON.stringify(row[1] === pubHols[j].date(), null, 4));
+                    if (row[1] === pubHols[j].date()) {
+                        var rangeString = "A" + (i + 1) + ":" + convertToNumberingScheme(row.length) + (i + 1);
+                        var pubHolRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange(rangeString);
+                        pubHolRange.format.fill.color = NOT_WORKING;
+
+                    }
+                }
+
+            }
         }
+        // Grey out the RDOs for each staff member
         for (var i = 0; i < datesByDaysOfTheWeek.length; i++) {
             var staff = unavailableStaff[i];
             var days = datesByDaysOfTheWeek[i];
@@ -173,7 +195,7 @@ function formatRoster(context, rosterRange) {
                     //console.log("I wish to grey out cell: " + " j: " + column + ", k: " + row);
                     var rangeString = convertToNumberingScheme(column) + row;
                     var dayOffRange = context.workbook.worksheets.getItemOrNullObject('Roster').getRange(rangeString);
-                    dayOffRange.format.fill.color = "#C8C8C8";
+                    dayOffRange.format.fill.color = NOT_WORKING;
                 }
             }
         }
@@ -192,6 +214,7 @@ function generateCalendar(numColumns) {
     var endDay = endDate.getDate();
     console.log("Start date is: " + startDate.toDateString() + "; end date is: " + endDate.toDateString());
     var calendar = [];
+    datesByDaysOfTheWeek = [[], [], [], [], [], [], []]; // reset in case selected month has changed since the last run
     for (var i = 1; i < endDay + 1; i++) {
         var row = [];
         var currentDate = new Date(yearSelect.value, monthSelect.selectedIndex, i);
@@ -210,23 +233,49 @@ function generateCalendar(numColumns) {
 function populatePublicHolidayData(context, pubHolRange) {
     console.log("Getting public holiday values");
     pubHolRange.load("values");
-    return context.sync().then(function() {
+    return context.sync().then(function () {
         if (pubHolRange.values === undefined) {
             document.getElementById('errorText').innerHTML = "Warning! Was looking for a sheet called Public Holidays but couldn't find one. Public holidays will not be applied! Continuing anyway...";
         } else {
-            console.log("Found public holiday values: " + JSON.stringify(pubHolRange.values, null, 4));
-            console.log("From this moment... " + moment().format());
+            pubHols = []; // reset values
+            //console.log("Found public holiday values: " + JSON.stringify(pubHolRange.values, null, 4));
+            var selectedDate = getSelectedDate();
+            for (var i = 0; i < pubHolRange.values.length; i++) {
+                for (var j = 0; j < pubHolRange.values[i].length; j++) {
+                    var pubHol = moment.utc(pubHolRange.values[i][j], PUBHOLDATEFORMAT, true);
+                    //console.log("PubHolRange value is: " + pubHolRange.values[i][j] + "; pubHol value is: " + pubHol);
+                    if (pubHol.isValid()) {
+                        //console.log("Found a valid moment: " + pubHol);
+                        if (pubHol.year() === selectedDate.year() && pubHol.month() === selectedDate.month()) {
+                            pubHols.push(pubHol);
 
+                        }
+                    }
+                }
+            }
         }
-    
+        console.log("Public holidays for " + monthSelect.value + " " + yearSelect.value + " are: " + JSON.stringify(pubHols));
+
     }).catch(function (error) {
         console.log("Error: " + error);
         if (error instanceof OfficeExtension.Error) {
             console.log("Debug info: " + JSON.stringify(error.debugInfo));
         }
     });
-    
 
+
+}
+
+/* Returns a moment based on the month and year selected in the drop down lists*/
+function getSelectedDate() {
+    var monthSelect = document.getElementById("monthSelect");
+    var monthSelect = document.getElementById("monthSelect");
+    var yearSelect = document.getElementById("yearSelect");
+    console.log("Selected date is: " + monthSelect.value + " " + yearSelect.value);
+    var selectedDate = moment();
+    selectedDate.month(monthSelect.value);
+    selectedDate.year(yearSelect.value);
+    return selectedDate;
 }
 
 function convertToNumberingScheme(number) {
